@@ -1,20 +1,9 @@
 const awsServerlessExpress = require("aws-serverless-express");
 import app from "./app";
-import { config } from "dotenv";
-
-// Get port from environment and store in Express.
-const myConfig = config();
-if (myConfig?.parsed?.PORT) {
-  process.env["PORT"] = myConfig.parsed.PORT;
-}
-const port = process.env.PORT || 3000;
-app.set("port", port);
 
 // Create HTTP server.
 const server = awsServerlessExpress.createServer(app);
 
-// Listen on provided port, on all network interfaces.
-server.listen(port);
 server.on("error", onError);
 server.on("listening", onListening);
 
@@ -24,16 +13,14 @@ function onError(error: any) {
     throw error;
   }
 
-  const bind = typeof port === "string" ? "Pipe " + port : "Port " + port;
-
   // handle specific listen errors with friendly messages
   switch (error.code) {
     case "EACCES":
-      console.error(bind + " requires elevated privileges");
+      console.error("requires elevated privileges");
       process.exit(1);
       break;
     case "EADDRINUSE":
-      console.error(bind + " is already in use");
+      console.error("already in use");
       process.exit(1);
       break;
     default:
