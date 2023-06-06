@@ -26,7 +26,7 @@ When using this as a starter project, perform the following steps:
 
 The rest of this README will explain the process of creating this repository.
 
-> <br>Huge thanks to Colt Steele, whose video and explanation helped me to integrate TypeScript into an Express app! Check out their original repository and video here:
+> Huge thanks to Colt Steele, whose video and explanation helped me to integrate TypeScript into an Express app! Check out their original repository and video here:
 >
 > - [Video: How To Use TypeScript With Express & Node](https://www.youtube.com/watch?v=qy8PxD3alWw)
 > - [Colt's Repo - express-ts](https://github.com/Colt/express-ts) > <br/>
@@ -243,7 +243,7 @@ app.use(function (
 export default app;
 ```
 
-#### server.ts
+#### server-local.ts
 
 ```
 import app from "./app";
@@ -315,3 +315,89 @@ router.get("/", function (req: Request, res: Response, next: NextFunction) {
 // on our API/server
 export default router;
 ```
+
+---
+
+## Integrating Docker & AWS (Lambda / API Gateway / ECR)
+
+I've wanted to be able to quickly generate an API that is publicly available, and the steps that I detail below describe exactly how I'm able to achieve that.
+
+### Creating a new "server" file for hosing via Lambda
+
+First, the `server.ts` file is renamed to `server-local.ts` and the package.json file has been updated to run that local server file when running the server locally.
+
+This new file is created so that it can be referenced in the `Dockerfile` which is described in the next step. This file makes use of the `aws-serverless-express` library and wraps the Express app with the "serverless" functionality, so that it can function properly when handled through an AWS Lambda.
+
+#### server-lambda.ts
+
+```
+const awsServerlessExpress = require("aws-serverless-express");
+import app from "./app";
+
+// Create HTTP server.
+const server = awsServerlessExpress.createServer(app);
+
+server.on("error", onError);
+server.on("listening", onListening);
+
+// Event listener for HTTP server "error" event.
+function onError(error: any) {
+  if (error.syscall !== "listen") {
+    throw error;
+  }
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case "EACCES":
+      console.error("requires elevated privileges");
+      process.exit(1);
+      break;
+    case "EADDRINUSE":
+      console.error("already in use");
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+// Event listener for HTTP server "listening" event.
+function onListening() {
+  const addr = server.address();
+  const bind = typeof addr === "string" ? "pipe " + addr : "port " + addr?.port;
+  console.log(`Listening on ${bind}`);
+}
+
+exports.handler = (event: any, context: any) => {
+  awsServerlessExpress.proxy(server, event, context);
+};
+```
+
+### Docker & ECR
+
+In order to use our Express application via an AWS Lambda, we need to package our code into a Docker container, and then store that container into AWS ECR (Elastic Container Registry) so that we can reference the code from an AWS Lambda function.
+
+This will mean that requests will be processed via Lambda functions, rather than an EC2 instance, which is a bit more cost effective, and can be helpful when scaling our application.
+
+The provided `Dockerfile` will create the container necessary for uploading to ECR and using within a Lambda when calling the `docker build` command like so:
+
+```
+docker build -t <container-name> <path-to-dockerfile>
+docker build -t docker-image .
+```
+
+Then, we can upload the container to ECR with the following commands:
+
+```
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 387815262971.dkr.ecr.us-east-1.amazonaws.com
+
+docker tag docker-image:test 387815262971.dkr.ecr.us-east-1.amazonaws.com/hello-world:latest
+
+docker push 387815262971.dkr.ecr.us-east-1.amazonaws.com/hello-world:latest
+```
+
+Once the container is pushed to ECR, we can integrate into a Lambda and serve it via API Gateway.
+
+For more steps on how to achieve this, view my tutorial here:
+
+- [Deploy an API via Lambda & API Gateway](https://nblaisdell.atlassian.net/wiki/spaces/~701210f4b5f4c121e4cd5804ebc078dd6b379/pages/45383681/Deploy+an+API+on+Lambda+API+Gateway)
