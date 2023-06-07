@@ -318,13 +318,13 @@ export default router;
 
 ---
 
-## Integrating Docker & AWS (Lambda / API Gateway / ECR)
+## Deploying an API via AWS Lambda & API Gateway
 
 I've wanted to be able to quickly generate an API that is publicly available, and the steps that I detail below describe exactly how I'm able to achieve that.
 
 ### Creating a new "server" file for hosing via Lambda
 
-First, the `server.ts` file is renamed to `server-local.ts` and the package.json file has been updated to run that local server file when running the server locally.
+First, the old `server.ts` file is renamed to `server-local.ts` and the package.json file has been updated to run that server file when running the server locally.
 
 This new file is created so that it can be referenced in the `Dockerfile` which is described in the next step. This file makes use of the `aws-serverless-express` library and wraps the Express app with the "serverless" functionality, so that it can function properly when handled through an AWS Lambda.
 
@@ -379,25 +379,44 @@ In order to use our Express application via an AWS Lambda, we need to package ou
 
 This will mean that requests will be processed via Lambda functions, rather than an EC2 instance, which is a bit more cost effective, and can be helpful when scaling our application.
 
-The provided `Dockerfile` will create the container necessary for uploading to ECR and using within a Lambda when calling the `docker build` command like so:
+The provided `Dockerfile` will build and create the container necessary for uploading to ECR and using within a Lambda when calling the `docker build` command like so:
 
 ```
 docker build -t <container-name> <path-to-dockerfile>
 docker build -t docker-image .
 ```
 
-Then, we can upload the container to ECR with the following commands:
+### AWS Resource Creation Automation
+
+The `create_aws_api.sh` file is an automation script which will take some values entered by the user via the command line, which consists of the names of various AWS resources and objects, and will build the Docker container, push the container to ECR, create the Lambda, and hook up an API Gateway to that Lambda to serve the requests through a new URL.
+
+- The "Lambda Exec Role ARN" can be created via IAM through the AWS Console
+  - Once the role is created, copy the ARN from the AWS Console and paste it during this script
+
+To be able to run this script, the following will need to be installed:
+
+- Bash
+- Docker
+- AWS CLI
 
 ```
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 387815262971.dkr.ecr.us-east-1.amazonaws.com
+bash create_aws_api.sh
 
-docker tag docker-image:test 387815262971.dkr.ecr.us-east-1.amazonaws.com/hello-world:latest
-
-docker push 387815262971.dkr.ecr.us-east-1.amazonaws.com/hello-world:latest
+# The following fields will expect to be entered by the user of this script
+AWS Account ID: _
+AWS Region (us-east-1): _
+AWS ECR Repo Name: _
+Container Name: _
+AWS Lambda Name: _
+AWS Lambda Exec Role ARN: _
+AWS API Gateway Name: _
+AWS API Gateway Description: _
 ```
 
 Once the container is pushed to ECR, we can integrate into a Lambda and serve it via API Gateway.
 
-For more steps on how to achieve this, view my tutorial here:
+---
+
+To learn more about this entire process, view my tutorial here:
 
 - [Deploy an API via Lambda & API Gateway](https://nblaisdell.atlassian.net/wiki/spaces/~701210f4b5f4c121e4cd5804ebc078dd6b379/pages/45383681/Deploy+an+API+on+Lambda+API+Gateway)
