@@ -37,14 +37,17 @@ jobs:
         run: npm run build --if-present
       - name: Test the Application
         run: npm test
+      - name: Check needed values
+        run: bash check_github_secrets.sh ${{ secrets.AWS_REGION }} ${{ secrets.AWS_ACCOUNT_ID }} ${{ secrets.AWS_LAMBDA_EXEC_ARN }} ${{ secrets.AWS_GHACTIONS_ROLENAME }}
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::387815262971:role/github-actions-role
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ secrets.AWS_GHACTIONS_ROLENAME }}
+          #   role-to-assume: arn:aws:iam::387815262971:role/github-actions-role
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Create AWS Infrastructure
         run: bash create_aws_api.sh ${{ secrets.AWS_ACCOUNT_ID }} ${{ secrets.AWS_REGION }} ${{ github.event.repository.name }} ${{ secrets.AWS_LAMBDA_EXEC_ARN }}
       - name: Running AWS CodeBuild
         uses: aws-actions/aws-codebuild-run-build@v1.0.12
         with:
-          project-name: test-api-build
+          project-name: ${{ github.event.repository.name }}
