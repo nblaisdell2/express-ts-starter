@@ -12,7 +12,7 @@ describe("The Main API", () => {
         expect(response.body).toEqual(
           expect.objectContaining({
             customMessage: expect.objectContaining({
-              msg: "Hello v3",
+              msg: "Hello",
             }),
           })
         );
