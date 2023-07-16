@@ -1,24 +1,24 @@
 shouldFail=0
 
-if [[ $1 == "" ]]
+if [[ $1 == "none" ]]
 then
   echo "{AWS_REGION} needs to be added to the Secrets in the GitHub repo"
   shouldFail=1  
 fi
 
-if [[ $2 == "" ]]
+if [[ $2 == "none" ]]
 then
   echo "{AWS_ACCOUNT_ID} needs to be added to the Secrets in the GitHub repo"
   shouldFail=1  
 fi
 
-if [[ $3 == "" ]]
+if [[ $3 == "none" ]]
 then
   echo "{AWS_LAMBDA_EXEC_ARN} needs to be added to the Secrets in the GitHub repo"
   shouldFail=1  
 fi
 
-if [[ $4 == "" ]]
+if [[ $4 == "none" ]]
 then
   echo "{AWS_GHACTIONS_ROLENAME} needs to be added to the Secrets in the GitHub repo"
   shouldFail=1  

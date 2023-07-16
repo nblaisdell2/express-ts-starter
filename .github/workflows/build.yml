@@ -38,7 +38,7 @@ jobs:
       - name: Test the Application
         run: npm test
       - name: Check needed values
-        run: bash check_github_secrets.sh ${{ secrets.AWS_REGION }} ${{ secrets.AWS_ACCOUNT_ID }} ${{ secrets.AWS_LAMBDA_EXEC_ARN }} ${{ secrets.AWS_GHACTIONS_ROLENAME }}
+        run: bash check_github_secrets.sh ${{ secrets.AWS_REGION || 'none' }} ${{ secrets.AWS_ACCOUNT_ID || 'none' }} ${{ secrets.AWS_LAMBDA_EXEC_ARN || 'none' }} ${{ secrets.AWS_GHACTIONS_ROLENAME || 'none' }}
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
