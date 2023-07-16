@@ -7,7 +7,7 @@ export const helloWorld = function (
   next: NextFunction
 ) {
   let customMessage: Message = {
-    msg: "Hello",
+    msg: "Hello v2",
   };
   res.status(200).json({ customMessage });
 };
