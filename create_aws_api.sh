@@ -5,10 +5,13 @@ awsRegion=$2
 awsECRRepoName=$3
 dockerContainerName=$3
 awsLambdaName=$3
+awsCodeBuildProjName=$3
 awsLambdaExecRoleArn=$4
+awsGitHubRepoURL=$5
 awsAPIGatewayName=$3-API
 awsAPIGatewayDesc="$3-API Description"
 
+# TODO: Add better logging to script
 
 
 
@@ -44,14 +47,48 @@ then
 
 
 
+
+
   echo ===================================
   echo CREATING LAMBDA FUNCTION
   echo ===================================
-  echo "  Creating..."
+  echo "  Creating Lambda..."
   aws lambda create-function --function-name $awsLambdaName --package-type Image --code ImageUri=$awsAccountID.dkr.ecr.$awsRegion.amazonaws.com/$dockerContainerName:latest --role $awsLambdaExecRoleArn >/dev/null
   sleep 15
   initVersion=$(aws lambda publish-version --function-name $awsLambdaName --description "Initial Version" | jq -r .Version)
   aws lambda create-alias --function-name $awsLambdaName --name latest --function-version $initVersion --description "Latest version" >/dev/null
+
+
+
+
+
+  echo ===================================
+  echo CREATING CODEBUILD PROJECT
+  echo ===================================
+  # create codebuild service-role and get ARN here to be used in the next section
+  awsCodeBuildRoleName="codebuild-$awsLambdaName-role"
+  awsCodeBuildRoleArn=$(aws iam create-role --role-name "$awsCodeBuildRoleName" --assume-role-policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codebuild.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}" | jq -r .Role.Arn)
+  aws iam put-role-policy --role-name "$awsCodeBuildRoleName" --policy-name "codebuild-$awsLambdaName-policy" --policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Sid\":\"Auto0\",\"Effect\":\"Allow\",\"Action\":[\"ecr:GetRegistryPolicy\",\"codedeploy:CreateDeployment\",\"codedeploy:RegisterApplicationRevision\",\"ecr:CreateRepository\",\"ecr:DescribeRegistry\",\"ecr:DescribePullThroughCacheRules\",\"codedeploy:GetDeploymentConfig\",\"ecr:GetAuthorizationToken\",\"ecr:PutRegistryScanningConfiguration\",\"ecr:CreatePullThroughCacheRule\",\"ecr:DeletePullThroughCacheRule\",\"ecr:PutRegistryPolicy\",\"ecr:GetRegistryScanningConfiguration\",\"codebuild:*\",\"ecr:BatchImportUpstreamImage\",\"ecr:DeleteRegistryPolicy\",\"ecr:PutReplicationConfiguration\"],\"Resource\":\"*\"},{\"Sid\":\"Auto1\",\"Effect\":\"Allow\",\"Action\":[\"lambda:UpdateFunctionCode\",\"lambda:GetFunction\",\"ecr:*\",\"lambda:PublishVersion\"],\"Resource\":[\"arn:aws:ecr:$awsRegion:$awsAccountID:repository/$awsLambdaName\",\"arn:aws:lambda:$awsRegion:$awsAccountID:function:$awsLambdaName\"]}]}" >/dev/null
+  sleep 10
+  aws codebuild create-project --name $awsCodeBuildProjName --source "{\"type\": \"GITHUB\", \"location\": \"$awsGitHubRepoURL\", \"reportBuildStatus\": true}" --artifacts "{\"type\": \"NO_ARTIFACTS\"}" --environment "{\"type\": \"LINUX_CONTAINER\", \"image\": \"aws/codebuild/amazonlinux2-x86_64-standard:5.0\", \"computeType\": \"BUILD_GENERAL1_SMALL\", \"privilegedMode\": true, \"imagePullCredentialsType\": \"CODEBUILD\"}" --service-role "$awsCodeBuildRoleArn" >/dev/null
+
+
+  
+
+
+  echo ===================================
+  echo CREATING CODEDEPLOY PROJECT
+  echo ===================================
+  awsCodeDeployRoleName="codedeploy-$awsLambdaName-role"
+  awsCodeDeployRoleArn=$(aws iam create-role --role-name "$awsCodeDeployRoleName" --assume-role-policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"codedeploy.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}" | jq -r .Role.Arn)
+  aws iam attach-role-policy --role-name $awsCodeDeployRoleName --policy-arn arn:aws:iam::aws:policy/AmazonElasticContainerRegistryPublicFullAccess >/dev/null
+  aws iam attach-role-policy --role-name $awsCodeDeployRoleName --policy-arn arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda >/dev/null
+  sleep 10
+
+  aws deploy create-application --application-name $awsLambdaName-deploy --compute-platform Lambda >/dev/null
+  aws deploy create-deployment-group --application-name $awsLambdaName-deploy --deployment-group-name $awsLambdaName-deploy-group --service-role-arn $awsCodeDeployRoleArn --deployment-style "{\"deploymentType\": \"BLUE_GREEN\", \"deploymentOption\": \"WITH_TRAFFIC_CONTROL\"}" >/dev/null
+
+
 
 
 
