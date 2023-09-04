@@ -31,6 +31,20 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: "npm"
+      - name: Loading Environment Variables from GH Secrets
+        run: |
+          touch .env
+
+          echo "$ALLMYSECRETS" | jq -r '. | to_entries[] | select(.key | startswith("ENV")) | .key + "=" + (.value|tojson)' |
+          while read i; 
+          do 
+            echo "${i/ENV_/""}" >> .env
+          done
+
+          cat .env
+        shell: bash
+        env:
+          ALLMYSECRETS: ${{ toJSON(secrets) }}
       - name: Install Dependencies
         run: npm ci
       - name: Build the Application
@@ -46,6 +60,9 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Create AWS Infrastructure
         run: bash create_aws_api.sh ${{ secrets.AWS_ACCOUNT_ID }} ${{ secrets.AWS_REGION }} ${{ github.event.repository.name }} ${{ secrets.AWS_LAMBDA_EXEC_ARN }} ${{github.event.repository.clone_url }}
+        shell: bash
+        env:
+          ALLMYSECRETS: ${{ toJSON(secrets) }}
       - name: Running AWS CodeBuild
         uses: aws-actions/aws-codebuild-run-build@v1.0.12
         with:

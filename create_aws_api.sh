@@ -118,6 +118,25 @@ then
   echo https://$restApiID.execute-api.$awsRegion.amazonaws.com/dev
 else
   echo "AWS Infrastructure already created..."
+
+  # Get all GH Secrets, find all variables starting with "ENV_",
+  # and create an object of environment variables to then
+  # use in the Update Lambda Config call
+  envVars="{"  
+  while read i; 
+  do 
+    if [ "$envVars" == "{" ]; then
+      item=$(echo "${i/ENV_/""}")    
+    else
+      item=$(echo ", ${i/ENV_/""}")
+    fi
+
+    envVars+="$item"
+  done <<< $(echo "$ALLMYSECRETS" | jq -r '. | to_entries[] | select(.key | startswith("ENV")) | (.key|tojson) + ": " + (.value|tojson)')
+  envVars+="}"
+
+  echo "Updating Lambda Environment Variables"
+  aws lambda update-function-configuration --function-name $dockerContainerName --environment "{ \"Variables\": $envVars }"
 fi
 
 rm aws.json
