@@ -1,6 +1,7 @@
 import express, { json, urlencoded } from "express";
 import type { Express, Request, Response, NextFunction } from "express";
 import createError, { HttpError } from "http-errors";
+import cors from "cors";
 
 import indexRouter from "./routes/index";
 
@@ -9,6 +10,10 @@ const app: Express = express();
 // Makes sure our API can only accept URL-encoded strings, or JSON data
 app.use(json());
 app.use(urlencoded({ extended: false }));
+
+// Adding CORS for working with cross-origin requests
+// Add additional URLs to the origin array here, when necessary
+app.use(cors({ origin: ["http://localhost:3000"] }));
 
 // Define our endpoints (routers) that are made available for our API
 app.use("/", indexRouter);
