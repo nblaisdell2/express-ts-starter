@@ -6,13 +6,13 @@ Since there are many times when I want to create an API, for various different p
 
 As I have more use-cases for creating APIs using Express, I will continue to add to this repository, giving myself more functions to start with.
 
-In order to get started using this boilerplate, simply clone or fork this repository, and start integrating your API using Express!
+In order to get started using this boilerplate, simply clone or fork this repository, or use it as a base template, and start integrating your API using Express!
 
 ## Forking/Cloning
 
 When using this as a starter project, perform the following steps:
 
-1. Create a ".env" file, and add a PORT variable. - If not provided, the default is port 3000.
+1. Create a `.env` file, and add a PORT variable. - If not provided, the default is port 3000.
    <br/>
 2. Install the dependencies for the project
    `npm install`
